@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.springtest.study.mboard.board.mapper.mariadb.BoardMapper">
+
+	<!--
+		게시판 맵  ( DAO Model class base )  이걸 안해주면  쿼리에서  ex) BRD.BRD_SEQ AS sequence 로 매번 호출해야해서번거롭다.
+	-->
+	<resultMap id="BoardMap" type="Board">
+		<result column="BRD_SEQ" property="sequence"/>
+		<result column="BRD_SUBJECT" property="subject"/>
+		<result column="BRD_CONTENT" property="content"/>
+		<result column="REG_ID" property="registrationId"/>
+		<result column="REG_DTM" property="registrationDateTime"/>
+		<result column="MOD_ID" property="modificationId"/>
+		<result column="MOD_DTM" property="modificationDateTime"/>
+	</resultMap>
+
+	<!--
+		공통으로 처리되는 검색조건들을 한번에 해결하기위해서 where 절을 sql로 따로 만들어둠 
+		 -->
+	<sql id="whereBoardSearch">
+		<where>
+			1=1
+			<if test='searchKeyword != null and searchKeyword != ""'>
+				<choose>
+					<when test='searchType != null and searchType == "subject"'>
+						<choose>
+							<when test='searchCondition != null and searchCondition == "like"'>
+								AND 
+									BRD.BRD_SUBJECT LIKE CONCAT('%',#{searchKeyword},'%')
+							</when>
+							<otherwise>
+								AND
+									BRD.BRD_SUBJECT = #{searchKeyword}
+							</otherwise>
+						</choose>
+					</when>
+					<when test='searchType != null and searchType == "subjectandcontent"'>
+						<choose>
+							<when test='searchCondition != null and searchCondition == "like"'>
+								AND
+									(BRD.BRD_SUBJECT LIKE CONCAT('%',#{searchKeyword},'%')
+									OR BRD.BRD_CONTENT LIKE CONCAT('%',#{searchKeyword},'%'))
+							</when>
+							<otherwise>
+								AND
+									(BRD.BRD_SUBJECT = #{searchKeyword}
+									OR BRD.BRD_CONTENT = #{searchKeyword})
+							</otherwise>
+						</choose>
+					</when>
+				</choose>
+			</if>
+		</where>
+	</sql>
+	
+	<!--
+		게시판 리스트를 가져옵니다.
+	-->
+	<select id="selectBoardList" parameterType="BoardSearch" resultMap="BoardMap">
+		SELECT 
+			BRD.BRD_SEQ,
+		    BRD.BRD_SUBJECT,
+		    BRD.BRD_CONTENT,
+		    BRD.REG_ID,
+		    DATE_FORMAT(BRD.REG_DTM, '%Y-%m-%d %H:%i:%s') AS REG_DTM
+		FROM
+			INT_BOARD_TB BRD
+		<include refid="whereBoardSearch"/>
+		LIMIT #{pagenation.pageStartRecordNo}, #{pagenation.recordCountPerPage}
+	</select>
+	
+	<select id="selectBoardListCount" parameterType="BoardSearch" resultType="int">
+	SELECT
+		COUNT(*) AS COUNT
+	FROM
+		INT_BOARD_TB BRD
+	  <include refid="whereBoardSearch"/>
+</select>
+</mapper>
